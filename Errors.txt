@@ -1,0 +1,7 @@
+Build failed:
+[8/01/2025 11:22:33 PM, D:\Games\POE Tools\poe2\ExileCore2_my_projects\Plugins\Source\CraftingCore\obj\Debug\CraftingCore.AssemblyInfo.cs(14, 12)] CS0579: Duplicate 'System.Reflection.AssemblyCompanyAttribute' attribute
+[8/01/2025 11:22:33 PM, D:\Games\POE Tools\poe2\ExileCore2_my_projects\Plugins\Source\CraftingCore\obj\Debug\CraftingCore.AssemblyInfo.cs(15, 12)] CS0579: Duplicate 'System.Reflection.AssemblyConfigurationAttribute' attribute
+[8/01/2025 11:22:33 PM, D:\Games\POE Tools\poe2\ExileCore2_my_projects\Plugins\Source\CraftingCore\obj\Debug\CraftingCore.AssemblyInfo.cs(16, 12)] CS0579: Duplicate 'System.Reflection.AssemblyFileVersionAttribute' attribute
+[8/01/2025 11:22:33 PM, D:\Games\POE Tools\poe2\ExileCore2_my_projects\Plugins\Source\CraftingCore\obj\Debug\CraftingCore.AssemblyInfo.cs(18, 12)] CS0579: Duplicate 'System.Reflection.AssemblyProductAttribute' attribute
+[8/01/2025 11:22:33 PM, D:\Games\POE Tools\poe2\ExileCore2_my_projects\Plugins\Source\CraftingCore\obj\Debug\CraftingCore.AssemblyInfo.cs(19, 12)] CS0579: Duplicate 'System.Reflection.AssemblyTitleAttribute' attribute
+[8/01/2025 11:22:33 PM, D:\Games\POE Tools\poe2\ExileCore2_my_projects\Plugins\Source\CraftingCore\obj\Debug\CraftingCore.AssemblyInfo.cs(20, 12)] CS0579: Duplicate 'System.Reflection.AssemblyVersionAttribute' attribute
