@@ -16,7 +16,7 @@ internal static class ActionsHandler
 {
     public static void CleanUp()
     {
-        Main.LogMessage("Starting input cleanup");
+        if (Main.Settings.DebugEnabled) Main.LogMessage("Starting input cleanup");
         try
         {
             Input.KeyUp(Keys.LControlKey);
@@ -28,104 +28,72 @@ internal static class ActionsHandler
             Input.KeyUp(Keys.LButton);
             Input.KeyUp(Keys.RButton);
 
-            Main.LogMessage("Input cleanup completed successfully");
+            if (Main.Settings.DebugEnabled) Main.LogMessage("Input cleanup completed successfully");
         }
         catch (Exception ex)
         {
-            Main.LogMessage($"Error during input cleanup: {ex.Message}");
+            if (Main.Settings.DebugEnabled) Main.LogMessage($"Error during input cleanup: {ex.Message}");
         }
-    }
-
-    public static async SyncTask<bool> PressKey(Keys key, int repetitions = 1)
-    {
-        for (var i = 0; i < repetitions; i++)
-        {
-            Input.KeyDown(key);
-            await Task.Delay(10);
-            Input.KeyUp(key);
-            await Task.Delay(10);
-        }
-
-        return true;
     }
 
     public static async SyncTask<bool> ProcessCrafting()
     {
         try
         {
-            Main.LogMessage("Starting ProcessCrafting");
+            if (Main.Settings.DebugEnabled) Main.LogMessage("Starting ProcessCrafting");
 
             var itemsToCraft = Main.CraftableItems;
             if (itemsToCraft.Count == 0)
             {
-                Main.LogMessage("No items to craft found");
-                return true;
-            }
-
-            // Use the first item to find the currency position
-            var currencyPos = await FindCurrency(itemsToCraft[0].Currency.Name);
-            if (currencyPos == null)
-            {
-                Main.LogMessage("Currency not found");
+                if (Main.Settings.DebugEnabled) Main.LogMessage("No items to craft found");
                 return true;
             }
 
             try
             {
-                // Hold shift using the new method
-                Main.LogMessage("Pressing shift key");
-                await PressKey(Keys.ShiftKey, 1);
+                // Hold shift
+                if (Main.Settings.DebugEnabled) Main.LogMessage("Holding shift key");
+                Input.KeyDown(Keys.ShiftKey);
                 await Task.Delay(50);
 
-                // Pick up currency once
-                Main.LogMessage("Picking up currency");
-                Input.SetCursorPos(currencyPos.Value + Main.ClickWindowOffset);
-                await Task.Delay(Main.Settings.ClickDelay);
-                Input.Click(MouseButtons.Right);
-                await Task.Delay(Main.Settings.ClickDelay);
-
-                // Click each item
                 foreach (var craftResult in itemsToCraft)
                 {
-                    await CraftItem(craftResult, skipCurrencyPickup: true);
+                    await CraftItem(craftResult);
                 }
             }
             finally
             {
                 Input.KeyUp(Keys.ShiftKey);
-                Main.LogMessage("Released shift key");
+                if (Main.Settings.DebugEnabled) Main.LogMessage("Released shift key");
             }
 
             return true;
         }
         catch (Exception ex)
         {
-            Main.LogMessage($"Error in ProcessCrafting: {ex.Message}");
+            if (Main.Settings.DebugEnabled) Main.LogMessage($"Error in ProcessCrafting: {ex.Message}");
             return false;
         }
     }
 
-    private static async SyncTask<bool> CraftItem(CraftingResult craftResult, bool skipCurrencyPickup = false)
+    private static async SyncTask<bool> CraftItem(CraftingResult craftResult)
     {
-        if (!skipCurrencyPickup)
+        var currencyPos = await FindCurrency(craftResult.Currency.Name);
+        if (currencyPos == null)
         {
-            var currencyPos = await FindCurrency(craftResult.Currency.Name);
-            if (currencyPos == null)
-            {
-                Main.LogMessage($"Currency not found: {craftResult.Currency.Name}");
-                return false;
-            }
-
-            // Pick up currency
-            Main.LogMessage("Moving to currency position and right-clicking");
-            Input.SetCursorPos(currencyPos.Value + Main.ClickWindowOffset);
-            await Task.Delay(Main.Settings.ClickDelay);
-            Input.Click(MouseButtons.Right);
-            await Task.Delay(Main.Settings.ClickDelay);
+            if (Main.Settings.DebugEnabled) Main.LogMessage($"Currency not found: {craftResult.Currency.Name}");
+            return false;
         }
 
-        // Use currency on item
-        Main.LogMessage($"Moving to item position: {craftResult.ItemClickPos}");
+        // Right-click on currency
+        if (Main.Settings.DebugEnabled) Main.LogMessage($"Right-clicking currency: {craftResult.Currency.Name}");
+        Input.SetCursorPos(currencyPos.Value + Main.ClickWindowOffset);
+        await Task.Delay(Main.Settings.ClickDelay);
+        Input.Click(MouseButtons.Right);
+        await Task.Delay(Main.Settings.ClickDelay);
+
+        // Left-click on item
+        if (Main.Settings.DebugEnabled) Main.LogMessage($"Left-clicking item at position: {craftResult.ItemClickPos}");
         Input.SetCursorPos(craftResult.ItemClickPos + Main.ClickWindowOffset);
         await Task.Delay(Main.Settings.ClickDelay);
         Input.Click(MouseButtons.Left);
@@ -141,7 +109,7 @@ internal static class ActionsHandler
 
         if (currencyTab?.VisibleInventoryItems == null)
         {
-            Main.LogMessage("Currency tab not accessible");
+            if (Main.Settings.DebugEnabled) Main.LogMessage("Currency tab not accessible");
             return null;
         }
 
@@ -149,19 +117,18 @@ internal static class ActionsHandler
         {
             if (item?.Item?.Path == null) continue;
 
-            Main.LogMessage($"Checking stash item: {item.Item.Path}");
+            if (Main.Settings.DebugEnabled) Main.LogMessage($"Checking stash item: {item.Item.Path}");
             if (item.Item.Path.EndsWith(currencyName))
             {
                 var pos = item.GetClientRect().Center;
-                Main.LogMessage($"Found {currencyName} at position {pos}");
+                if (Main.Settings.DebugEnabled) Main.LogMessage($"Found {currencyName} at position {pos}");
                 return pos;
             }
 
-            // Add a small delay to prevent blocking the main thread
             await Task.Delay(1);
         }
 
         return null;
     }
-
 }
+

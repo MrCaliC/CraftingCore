@@ -22,4 +22,8 @@ public class CraftingSettings : ISettings
 
     // Dictionary to track enabled status for each currency
     public Dictionary<string, ToggleNode> CurrencyEnabled { get; set; } = new();
+
+    [Menu("Enable Debug Logging")]
+    public ToggleNode DebugEnabled { get; set; } = new ToggleNode(false);
+
 }

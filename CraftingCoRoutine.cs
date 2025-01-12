@@ -24,7 +24,7 @@ public static class CraftingCoRoutine
         }
         else
         {
-            Main.LogMessage("Crafting coroutine is already running");
+            if (Main.Settings.DebugEnabled) Main.LogMessage("Crafting coroutine is already running");
         }
     }
 
@@ -32,7 +32,7 @@ public static class CraftingCoRoutine
     {
         TaskRunner.Stop(routineName);
         ActionsHandler.CleanUp();
-        Main.LogMessage("Crafting stopped");
+        if (Main.Settings.DebugEnabled) Main.LogMessage("Crafting stopped");
     }
 
     private static async SyncTask<bool> AutoCraftRoutine()
@@ -40,42 +40,22 @@ public static class CraftingCoRoutine
         try
         {
             var cursorPosPreMoving = Input.ForceMousePosition;
-            Main.LogMessage("Starting AutoCraftRoutine");
+            if (Main.Settings.DebugEnabled) Main.LogMessage("Starting AutoCraftRoutine");
 
-            // Try crafting items 3 times
-            var tries = 0;
+            bool itemsNeedCrafting;
             do
             {
-                try
-                {
-                    await ItemManager.ParseItems();
-                    if (Main.CraftableItems.Count > 0)
-                    {
-                        Main.LogMessage($"Attempt {tries + 1}: Found {Main.CraftableItems.Count} items to craft");
-                        await ActionsHandler.ProcessCrafting();
-                        await Task.Delay(Main.Settings.ExtraDelay);
-                    }
-                    else
-                    {
-                        Main.LogMessage($"Attempt {tries + 1}: No craftable items found");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Main.LogMessage($"Error during crafting attempt {tries + 1}: {ex.Message}");
-                    ActionsHandler.CleanUp(); // Ensure cleanup happens on error
-                }
-                tries++;
-            } while (tries < 3 && Main.CraftableItems.Count > 0);
+                itemsNeedCrafting = await CraftingCycle();
+            } while (itemsNeedCrafting);
 
             Input.SetCursorPos(cursorPosPreMoving);
             Input.MouseMove();
-            Main.LogMessage("AutoCraftRoutine completed");
+            if (Main.Settings.DebugEnabled) Main.LogMessage("AutoCraftRoutine completed");
             return true;
         }
         catch (Exception ex)
         {
-            Main.LogMessage($"Critical error in AutoCraftRoutine: {ex.Message}");
+            if (Main.Settings.DebugEnabled) Main.LogMessage($"Critical error in AutoCraftRoutine: {ex.Message}");
             ActionsHandler.CleanUp();
             return false;
         }
@@ -83,6 +63,22 @@ public static class CraftingCoRoutine
         {
             StopCoroutine(CoroutineName);
         }
+    }
+
+    private static async SyncTask<bool> CraftingCycle()
+    {
+        await ItemManager.ParseItems();
+        if (Main.CraftableItems.Count == 0)
+        {
+            if (Main.Settings.DebugEnabled) Main.LogMessage("No items need crafting");
+            return false;
+        }
+
+        if (Main.Settings.DebugEnabled) Main.LogMessage($"Found {Main.CraftableItems.Count} items to craft");
+        await ActionsHandler.ProcessCrafting();
+        await Task.Delay(Main.Settings.ExtraDelay);
+
+        return true;
     }
 }
 

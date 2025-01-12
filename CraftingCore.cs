@@ -103,15 +103,15 @@ public class CraftingCore : BaseSettingsPlugin<CraftingSettings>
         // Check for hotkey press
         if (Settings.CraftHotkey.PressedOnce())
         {
-            LogMessage("Craft hotkey pressed");
+            if (Settings.DebugEnabled) LogMessage("Craft hotkey pressed");
             if (TaskRunner.Has(CoroutineName))
             {
-                LogMessage("Stopping existing crafting routine");
+                if (Settings.DebugEnabled) LogMessage("Stopping existing crafting routine");
                 CraftingCoRoutine.StopCoroutine(CoroutineName);
             }
             else
             {
-                LogMessage("Starting new crafting routine");
+                if (Settings.DebugEnabled) LogMessage("Starting new crafting routine");
                 CraftingCoRoutine.StartCraftingCoroutine();
             }
         }
@@ -119,7 +119,7 @@ public class CraftingCore : BaseSettingsPlugin<CraftingSettings>
         // Emergency cleanup hotkey
         if (Settings.EmergencyCleanupHotkey.PressedOnce())
         {
-            LogMessage("Emergency cleanup triggered!");
+            if (Settings.DebugEnabled) LogMessage("Emergency cleanup triggered!");
             TaskRunner.Stop(CoroutineName);
             ActionsHandler.CleanUp();
         }

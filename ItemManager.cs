@@ -19,18 +19,18 @@ internal static class ItemManager
         var serverData = Main.GameController.Game.IngameState.Data.ServerData;
         if (serverData == null)
         {
-            Main.LogMessage("Server data is null");
+            if (Main.Settings.DebugEnabled) Main.LogMessage("Server data is null");
             return false;
         }
 
         var inventoryItems = serverData.PlayerInventories[0]?.Inventory?.InventorySlotItems;
         if (inventoryItems == null)
         {
-            Main.LogMessage("Inventory items are null");
+            if (Main.Settings.DebugEnabled) Main.LogMessage("Inventory items are null");
             return false;
         }
 
-        Main.LogMessage($"Found {inventoryItems?.Count ?? 0} total inventory items");
+        if (Main.Settings.DebugEnabled) Main.LogMessage($"Found {inventoryItems?.Count ?? 0} total inventory items");
 
         await TaskUtils.CheckEveryFrameWithThrow(() => inventoryItems != null, new CancellationTokenSource(500).Token);
         Main.CraftableItems = new List<CraftingResult>();
@@ -46,28 +46,28 @@ internal static class ItemManager
 
             if (!IsCraftable(item))
             {
-                Main.LogMessage($"Skipping non-craftable item: {item.Path}");
+                if (Main.Settings.DebugEnabled) Main.LogMessage($"Skipping non-craftable item: {item.Path}");
                 continue;
             }
 
             var currency = DetermineBestCurrency(item);
             if (currency == null)
             {
-                Main.LogMessage($"No suitable currency found for item: {item.Path}");
+                if (Main.Settings.DebugEnabled) Main.LogMessage($"No suitable currency found for item: {item.Path}");
                 continue;
             }
 
             // Debug the settings state
-            Main.LogMessage($"Checking if currency {currency.Name} is enabled in settings");
+            if (Main.Settings.DebugEnabled) Main.LogMessage($"Checking if currency {currency.Name} is enabled in settings");
             var isEnabled = false;
             if (Main.Settings.CurrencyEnabled.TryGetValue(currency.Name, out var enabled))
             {
                 isEnabled = enabled.Value;
-                Main.LogMessage($"Currency {currency.Name} enabled state: {isEnabled}");
+                if (Main.Settings.DebugEnabled) Main.LogMessage($"Currency {currency.Name} enabled state: {isEnabled}");
             }
             else
             {
-                Main.LogMessage($"Currency {currency.Name} not found in settings");
+                if (Main.Settings.DebugEnabled) Main.LogMessage($"Currency {currency.Name} not found in settings");
             }
 
             // Only add if currency is enabled or if settings entry doesn't exist
@@ -79,15 +79,15 @@ internal static class ItemManager
                     ItemClickPos = invItem.GetClientRect().Center,
                     Item = item
                 });
-                Main.LogMessage($"Added craftable item using {currency.Name}");
+                if (Main.Settings.DebugEnabled) Main.LogMessage($"Added craftable item using {currency.Name}");
             }
             else
             {
-                Main.LogMessage($"Skipping item because {currency.Name} is disabled in settings");
+                if (Main.Settings.DebugEnabled) Main.LogMessage($"Skipping item because {currency.Name} is disabled in settings");
             }
         }
 
-        Main.LogMessage($"Parse complete. Found {Main.CraftableItems.Count} craftable items");
+        if (Main.Settings.DebugEnabled) Main.LogMessage($"Parse complete. Found {Main.CraftableItems.Count} craftable items");
         return true;
     }
 
@@ -167,7 +167,7 @@ internal static class ItemManager
             var tier = GetWaystoneTier(item);
             if (tier == null) return null;
 
-            Main.LogMessage($"Found waystone tier {tier} with rarity {mods.ItemRarity}");
+            if (Main.Settings.DebugEnabled) Main.LogMessage($"Found waystone tier {tier} with rarity {mods.ItemRarity}");
 
             // IMPORTANT: Process rarities in logical crafting order
             if (mods.ItemRarity == ItemRarity.Normal)
@@ -175,25 +175,35 @@ internal static class ItemManager
                 // Normal waystones should be transmuted first
                 return Main.CurrencyList.FirstOrDefault(c => c.Name == "CurrencyUpgradeToMagic"); // Orb of Transmutation
             }
-            else if (mods.ItemRarity == ItemRarity.Magic && tier >= 10)
+            else if (mods.ItemRarity == ItemRarity.Magic)
             {
-                // Magic waystones can be regaled
-                return Main.CurrencyList.FirstOrDefault(c => c.Name == "CurrencyUpgradeMagicToRare"); // Regal Orb
+                var modCount = GetModCount(mods);
+                if (modCount < 2)
+                {
+                    // Magic waystones with less than 2 mods should be augmented
+                    return Main.CurrencyList.FirstOrDefault(c => c.Name == "CurrencyAddModToMagic"); // Orb of Augmentation
+                }
+                else if (tier >= 10)
+                {
+                    // Magic waystones with 2 mods and tier 10+ can be regaled
+                    return Main.CurrencyList.FirstOrDefault(c => c.Name == "CurrencyUpgradeMagicToRare"); // Regal Orb
+                }
             }
             else if (mods.ItemRarity == ItemRarity.Rare)
             {
                 var modCount = GetModCount(mods);
                 if (modCount < 6 && tier >= 12)
                 {
-                    // Rare waystones with open affixes can be exalted
+                    // Rare waystones with open affixes and tier 12+ can be exalted
                     return Main.CurrencyList.FirstOrDefault(c => c.Name == "CurrencyAddModToRare"); // Exalted Orb
                 }
             }
 
-            Main.LogMessage($"No suitable currency found for this waystone");
+            if (Main.Settings.DebugEnabled) Main.LogMessage($"No suitable currency found for this waystone");
             return null;
         }
 
         return null;
     }
 }
+
