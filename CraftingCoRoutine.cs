@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using ExileCore2;
 using ExileCore2.Shared;
 using static CraftingCore.CraftingCore;
+using System.Linq;
 
 namespace CraftingCore.Compartments;
 
@@ -46,6 +47,13 @@ public static class CraftingCoRoutine
             do
             {
                 itemsNeedCrafting = await CraftingCycle();
+
+                // Check if there are any items left that need Vaal Orbs
+                if (!itemsNeedCrafting)
+                {
+                    await ItemManager.ParseItems();
+                    itemsNeedCrafting = Main.CraftableItems.Any(item => item.Currency.Name == "CurrencyCorrupt");
+                }
             } while (itemsNeedCrafting);
 
             Input.SetCursorPos(cursorPosPreMoving);

@@ -26,4 +26,7 @@ public class CraftingSettings : ISettings
     [Menu("Enable Debug Logging")]
     public ToggleNode DebugEnabled { get; set; } = new ToggleNode(false);
 
+    [Menu("Enable Alchemy Craft Only", "Enable this to only craft with Alchemy, Exalts, and Vaal Orbs")]
+    public ToggleNode AlchemyCraftOnly { get; set; } = new ToggleNode(false);
 }
+

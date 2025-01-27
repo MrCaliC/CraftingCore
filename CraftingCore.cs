@@ -22,6 +22,7 @@ public class CraftingCore : BaseSettingsPlugin<CraftingSettings>
         new Currency("CurrencyUpgradeToMagic"),      // Orb of Transmutation
         new Currency("CurrencyAddModToMagic"),       // Orb of Augmentation
         new Currency("CurrencyUpgradeMagicToRare"),  // Regal Orb
+        new Currency("CurrencyUpgradeToRare"),       // Alchemy Orb
         new Currency("CurrencyAddModToRare"),        // Exalted Orb
         new Currency("CurrencyCorrupt")              // Vaal Orb
     };
@@ -31,6 +32,7 @@ public class CraftingCore : BaseSettingsPlugin<CraftingSettings>
         {"CurrencyUpgradeToMagic", "Orb of Transmutation"},
         {"CurrencyAddModToMagic", "Orb of Augmentation"},
         {"CurrencyUpgradeMagicToRare", "Regal Orb"},
+        {"CurrencyUpgradeToRare", "Alchemy Orb"},
         {"CurrencyAddModToRare", "Exalted Orb"},
         {"CurrencyCorrupt", "Vaal Orb"}
     };
@@ -73,6 +75,17 @@ public class CraftingCore : BaseSettingsPlugin<CraftingSettings>
     private void DrawCraftingSettings()
     {
         ImGui.TextColored(new System.Numerics.Vector4(0f, 1f, 0.022f, 1f), "Crafting Settings");
+
+        var alchemyCraftOnly = Settings.AlchemyCraftOnly.Value;
+        if (ImGui.Checkbox("Enable Alchemy Craft Only", ref alchemyCraftOnly))
+        {
+            Settings.AlchemyCraftOnly.Value = alchemyCraftOnly;
+        }
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip("Enable this to only craft with Alchemy, Exalts, and Vaal Orbs");
+        }
+
 
         foreach (var currency in CurrencyList)
         {

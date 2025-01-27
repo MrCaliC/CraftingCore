@@ -16,79 +16,101 @@ internal static class ItemManager
 {
     public static async SyncTask<bool> ParseItems()
     {
-        var serverData = Main.GameController.Game.IngameState.Data.ServerData;
-        if (serverData == null)
+        try 
         {
-            if (Main.Settings.DebugEnabled) Main.LogMessage("Server data is null");
-            return false;
-        }
-
-        var inventoryItems = serverData.PlayerInventories[0]?.Inventory?.InventorySlotItems;
-        if (inventoryItems == null)
-        {
-            if (Main.Settings.DebugEnabled) Main.LogMessage("Inventory items are null");
-            return false;
-        }
-
-        if (Main.Settings.DebugEnabled) Main.LogMessage($"Found {inventoryItems?.Count ?? 0} total inventory items");
-
-        await TaskUtils.CheckEveryFrameWithThrow(() => inventoryItems != null, new CancellationTokenSource(500).Token);
-        Main.CraftableItems = new List<CraftingResult>();
-        Main.ClickWindowOffset = Main.GameController.Window.GetWindowRectangle().TopLeft;
-
-        foreach (var invItem in inventoryItems)
-        {
-            if (invItem.Item == null || invItem.Address == 0) continue;
-
-            var item = invItem.Item;
-            var mods = item.GetComponent<Mods>();
-            var base_item = item.GetComponent<Base>();
-
-            if (!IsCraftable(item))
+            var serverData = Main.GameController.Game.IngameState.Data.ServerData;
+            if (serverData == null)
             {
-                if (Main.Settings.DebugEnabled) Main.LogMessage($"Skipping non-craftable item: {item.Path}");
-                continue;
+                if (Main.Settings.DebugEnabled) Main.LogMessage("Server data is null");
+                return false;
             }
 
-            var currency = DetermineBestCurrency(item);
-            if (currency == null)
+            var inventoryItems = serverData.PlayerInventories;
+            if (inventoryItems == null || inventoryItems.Count == 0)
             {
-                if (Main.Settings.DebugEnabled) Main.LogMessage($"No suitable currency found for item: {item.Path}");
-                continue;
+                if (Main.Settings.DebugEnabled) Main.LogMessage("Player inventories is null or empty");
+                return false;
             }
 
-            // Debug the settings state
-            if (Main.Settings.DebugEnabled) Main.LogMessage($"Checking if currency {currency.Name} is enabled in settings");
-            var isEnabled = false;
-            if (Main.Settings.CurrencyEnabled.TryGetValue(currency.Name, out var enabled))
+            var inventory = inventoryItems[0]?.Inventory;
+            if (inventory == null)
             {
-                isEnabled = enabled.Value;
-                if (Main.Settings.DebugEnabled) Main.LogMessage($"Currency {currency.Name} enabled state: {isEnabled}");
-            }
-            else
-            {
-                if (Main.Settings.DebugEnabled) Main.LogMessage($"Currency {currency.Name} not found in settings");
+                if (Main.Settings.DebugEnabled) Main.LogMessage("Inventory is null");
+                return false;
             }
 
-            // Only add if currency is enabled or if settings entry doesn't exist
-            if (isEnabled || !Main.Settings.CurrencyEnabled.ContainsKey(currency.Name))
+            var items = inventory.InventorySlotItems;
+            if (items == null)
             {
-                Main.CraftableItems.Add(new CraftingResult
+                if (Main.Settings.DebugEnabled) Main.LogMessage("Inventory items are null");
+                return false;
+            }
+
+            if (Main.Settings.DebugEnabled) Main.LogMessage($"Found {items.Count} total inventory items");
+
+            await TaskUtils.CheckEveryFrameWithThrow(() => items != null, new CancellationTokenSource(500).Token);
+            Main.CraftableItems = new List<CraftingResult>();
+            Main.ClickWindowOffset = Main.GameController.Window.GetWindowRectangle().TopLeft;
+
+            foreach (var invItem in items)
+            {
+                if (invItem?.Item == null || invItem.Address == 0) continue;
+
+                var item = invItem.Item;
+                var mods = item.GetComponent<Mods>();
+                var base_item = item.GetComponent<Base>();
+
+                if (!IsCraftable(item))
                 {
-                    Currency = currency,
-                    ItemClickPos = invItem.GetClientRect().Center,
-                    Item = item
-                });
-                if (Main.Settings.DebugEnabled) Main.LogMessage($"Added craftable item using {currency.Name}");
-            }
-            else
-            {
-                if (Main.Settings.DebugEnabled) Main.LogMessage($"Skipping item because {currency.Name} is disabled in settings");
-            }
-        }
+                    if (Main.Settings.DebugEnabled) Main.LogMessage($"Skipping non-craftable item: {item.Path}");
+                    continue;
+                }
 
-        if (Main.Settings.DebugEnabled) Main.LogMessage($"Parse complete. Found {Main.CraftableItems.Count} craftable items");
-        return true;
+                var currency = DetermineBestCurrency(item);
+                if (currency == null)
+                {
+                    if (Main.Settings.DebugEnabled) Main.LogMessage($"No suitable currency found for item: {item.Path}");
+                    continue;
+                }
+
+                // Debug the settings state
+                if (Main.Settings.DebugEnabled) Main.LogMessage($"Checking if currency {currency.Name} is enabled in settings");
+                var isEnabled = false;
+                if (Main.Settings.CurrencyEnabled.TryGetValue(currency.Name, out var enabled))
+                {
+                    isEnabled = enabled.Value;
+                    if (Main.Settings.DebugEnabled) Main.LogMessage($"Currency {currency.Name} enabled state: {isEnabled}");
+                }
+                else
+                {
+                    if (Main.Settings.DebugEnabled) Main.LogMessage($"Currency {currency.Name} not found in settings");
+                }
+
+                // Only add if currency is enabled or if settings entry doesn't exist
+                if (isEnabled || !Main.Settings.CurrencyEnabled.ContainsKey(currency.Name))
+                {
+                    Main.CraftableItems.Add(new CraftingResult
+                    {
+                        Currency = currency,
+                        ItemClickPos = invItem.GetClientRect().Center,
+                        Item = item
+                    });
+                    if (Main.Settings.DebugEnabled) Main.LogMessage($"Added craftable item using {currency.Name}");
+                }
+                else
+                {
+                    if (Main.Settings.DebugEnabled) Main.LogMessage($"Skipping item because {currency.Name} is disabled in settings");
+                }
+            }
+
+            if (Main.Settings.DebugEnabled) Main.LogMessage($"Parse complete. Found {Main.CraftableItems.Count} craftable items");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            if (Main.Settings.DebugEnabled) Main.LogMessage($"Error in ParseItems: {ex.Message}");
+            return false;
+        }
     }
 
     private static bool IsCraftable(Entity item)
@@ -103,11 +125,24 @@ internal static class ItemManager
         // Don't craft corrupted items
         if (base_item.isCorrupted) return false;
 
-        // Only craft waystones for now
-        if (!IsWaystone(item)) return false;
+        // Check if the item is a Waystone or a Tablet
+        bool isWaystone = IsWaystone(item);
+        bool isTablet = IsTablet(item);
 
-        // Only craft normal, magic, or rare items
-        if (mods.ItemRarity != ItemRarity.Normal &&
+        if (!isWaystone && !isTablet) return false;
+
+        // If Alchemy Craft Only is enabled, only craft normal or rare items for Waystones
+        // For Tablets, only craft normal or magic items
+        if (Main.Settings.AlchemyCraftOnly)
+        {
+            if (isWaystone && mods.ItemRarity == ItemRarity.Magic) return false;
+        }
+
+        // Only craft normal or magic items for Tablets
+        if (isTablet && mods.ItemRarity != ItemRarity.Normal && mods.ItemRarity != ItemRarity.Magic) return false;
+
+        // For Waystones, only craft normal, magic, or rare items
+        if (isWaystone && mods.ItemRarity != ItemRarity.Normal &&
             mods.ItemRarity != ItemRarity.Magic &&
             mods.ItemRarity != ItemRarity.Rare) return false;
 
@@ -119,6 +154,16 @@ internal static class ItemManager
         var mapComponent = item.GetComponent<Map>();
         return mapComponent != null;
     }
+
+    private static bool IsTablet(Entity item)
+    {
+        var baseComponent = item.GetComponent<Base>();
+        if (baseComponent == null) return false;
+
+        return Main.GameController.Files.BaseItemTypes.Contents.TryGetValue(item.Metadata, out var baseItemType) 
+               && baseItemType.ClassName.Contains("TowerAugment", StringComparison.OrdinalIgnoreCase);
+    }
+
 
     private static int? GetWaystoneTier(Entity item)
     {
@@ -161,48 +206,130 @@ internal static class ItemManager
         // First need to identify if unidentified
         if (!mods.Identified) return null;
 
-        // Special handling for Waystones
-        if (IsWaystone(item))
+        bool isWaystone = IsWaystone(item);
+        bool isTablet = IsTablet(item);
+
+        if (isWaystone)
         {
-            var tier = GetWaystoneTier(item);
-            if (tier == null) return null;
+            return DetermineBestCurrencyForWaystone(item, mods);
+        }
+        else if (isTablet)
+        {
+            return DetermineBestCurrencyForTablet(item, mods);
+        }
 
-            if (Main.Settings.DebugEnabled) Main.LogMessage($"Found waystone tier {tier} with rarity {mods.ItemRarity}");
+        return null;
+    }
 
-            // IMPORTANT: Process rarities in logical crafting order
+    private static Currency DetermineBestCurrencyForWaystone(Entity item, Mods mods)
+    {
+        var tier = GetWaystoneTier(item);
+        if (tier == null) return null;
+
+        if (Main.Settings.DebugEnabled) Main.LogMessage($"Found waystone tier {tier} with rarity {mods.ItemRarity}");
+
+        var modCount = GetModCount(mods);
+        if (Main.Settings.DebugEnabled) Main.LogMessage($"Waystone mod count: {modCount}");
+
+        if (Main.Settings.AlchemyCraftOnly)
+        {
             if (mods.ItemRarity == ItemRarity.Normal)
             {
-                // Normal waystones should be transmuted first
+                return Main.CurrencyList.FirstOrDefault(c => c.Name == "CurrencyUpgradeToRare"); // Alchemy Orb
+            }
+            else if (mods.ItemRarity == ItemRarity.Rare)
+            {
+                if (modCount < 6 && Main.Settings.CurrencyEnabled.TryGetValue("CurrencyAddModToRare", out var exaltEnabled) && exaltEnabled.Value)
+                {
+                    return Main.CurrencyList.FirstOrDefault(c => c.Name == "CurrencyAddModToRare"); // Exalted Orb
+                }
+                else if (modCount == 6 && Main.Settings.CurrencyEnabled.TryGetValue("CurrencyCorrupt", out var vaalEnabled) && vaalEnabled.Value)
+                {
+                    return Main.CurrencyList.FirstOrDefault(c => c.Name == "CurrencyCorrupt"); // Vaal Orb
+                }
+            }
+        }
+        else
+        {
+            // Existing logic for non-Alchemy Craft Only mode
+            if (mods.ItemRarity == ItemRarity.Normal)
+            {
                 return Main.CurrencyList.FirstOrDefault(c => c.Name == "CurrencyUpgradeToMagic"); // Orb of Transmutation
             }
             else if (mods.ItemRarity == ItemRarity.Magic)
             {
-                var modCount = GetModCount(mods);
                 if (modCount < 2)
                 {
-                    // Magic waystones with less than 2 mods should be augmented
                     return Main.CurrencyList.FirstOrDefault(c => c.Name == "CurrencyAddModToMagic"); // Orb of Augmentation
                 }
                 else if (tier >= 10)
                 {
-                    // Magic waystones with 2 mods and tier 10+ can be regaled
                     return Main.CurrencyList.FirstOrDefault(c => c.Name == "CurrencyUpgradeMagicToRare"); // Regal Orb
                 }
             }
             else if (mods.ItemRarity == ItemRarity.Rare)
             {
-                var modCount = GetModCount(mods);
                 if (modCount < 6 && tier >= 12)
                 {
-                    // Rare waystones with open affixes and tier 12+ can be exalted
                     return Main.CurrencyList.FirstOrDefault(c => c.Name == "CurrencyAddModToRare"); // Exalted Orb
                 }
+                else if (modCount == 6 && Main.Settings.CurrencyEnabled.TryGetValue("CurrencyCorrupt", out var vaalEnabled) && vaalEnabled.Value)
+                {
+                    return Main.CurrencyList.FirstOrDefault(c => c.Name == "CurrencyCorrupt"); // Vaal Orb
+                }
             }
-
-            if (Main.Settings.DebugEnabled) Main.LogMessage($"No suitable currency found for this waystone");
-            return null;
         }
 
+        if (Main.Settings.DebugEnabled) Main.LogMessage($"No suitable currency found for this waystone");
+        return null;
+    }
+
+
+
+    private static int GetTabletModCount(Mods mods)
+    {
+        if (mods?.ItemMods == null) return 0;
+
+        // For Tablets, we count actual mods without filtering prefixes/suffixes
+        int modCount = 0;
+        foreach (var mod in mods.ItemMods)
+        {
+            // Skip hidden or special mods
+            if (string.IsNullOrEmpty(mod.DisplayName)) continue;
+            if (mod.Group == "AfflictionMapDeliriumStacks") continue;
+
+            modCount++;
+            if (Main.Settings.DebugEnabled) Main.LogMessage($"Found tablet mod: {mod.DisplayName}, Group: {mod.Group}");
+        }
+
+        return modCount;
+    }
+
+    private static Currency DetermineBestCurrencyForTablet(Entity item, Mods mods)
+    {
+        if (Main.Settings.DebugEnabled) Main.LogMessage($"Found tablet with rarity {mods.ItemRarity}");
+
+        var modCount = GetTabletModCount(mods);
+        if (Main.Settings.DebugEnabled) Main.LogMessage($"The mod count for this tablet is: {modCount}");
+
+        if (mods.ItemRarity == ItemRarity.Normal)
+        {
+            return Main.CurrencyList.FirstOrDefault(c => c.Name == "CurrencyUpgradeToMagic"); // Orb of Transmutation
+        }
+        else if (mods.ItemRarity == ItemRarity.Magic)
+        {
+            if (modCount < 2)
+            {
+                if (Main.Settings.DebugEnabled) Main.LogMessage("Tablet has less than 2 mods, can apply Augmentation");
+                return Main.CurrencyList.FirstOrDefault(c => c.Name == "CurrencyAddModToMagic"); // Orb of Augmentation
+            }
+            else
+            {
+                if (Main.Settings.DebugEnabled) Main.LogMessage("Tablet already has 2 mods, cannot apply more currency");
+            }
+        }
+
+        if (Main.Settings.DebugEnabled) Main.LogMessage($"No suitable currency found for this tablet");
         return null;
     }
 }
