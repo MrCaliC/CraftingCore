@@ -1,2 +1,2 @@
 Build failed:
-[12/01/2025 5:27:30 PM, D:\Games\POE Tools\poe2\ExileCore2_my_projects\Plugins\Source\CraftingCore\CraftingSettings.cs(29, 1)] CS1022: Type or namespace definition, or end-of-file expected
+[31/01/2025 10:17:58 AM, D:\Games\POE Tools\poe2\ExileCore2_my_projects\Plugins\Source\CraftingCore\ItemManager.cs(236, 52)] CS1061: 'CraftingSettings' does not contain a definition for 'WaystoneHighlight' and no accessible extension method 'WaystoneHighlight' accepting a first argument of type 'CraftingSettings' could be found (are you missing a using directive or an assembly reference?)
