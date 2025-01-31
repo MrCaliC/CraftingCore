@@ -234,13 +234,23 @@ internal static class ItemManager
         if (Main.Settings.DebugEnabled) Main.LogMessage($"Waystone score: {score}");
 
         bool scoreReached = score >= Main.Settings.ScoreSettings.MinimumCraftHighlightScore.Value;
-        bool canApplyVaalOrb = modCount == 6 && Main.Settings.CurrencyEnabled.TryGetValue("CurrencyCorrupt", out var vaalEnabled) && vaalEnabled.Value;
+        if (Main.Settings.DebugEnabled) Main.LogMessage($"Score reached: {scoreReached}, Minimum score: {Main.Settings.ScoreSettings.MinimumCraftHighlightScore.Value}");
+
+        bool canApplyVaalOrb = Main.Settings.CurrencyEnabled.TryGetValue("CurrencyCorrupt", out var vaalEnabled) && vaalEnabled.Value;
+        bool canApplyAlchemy = Main.Settings.CurrencyEnabled.TryGetValue("CurrencyUpgradeToRare", out var alchemyEnabled) && alchemyEnabled.Value;
+        bool canApplyExalt = Main.Settings.CurrencyEnabled.TryGetValue("CurrencyAddModToRare", out var exaltEnabled) && exaltEnabled.Value;
+
+        if (Main.Settings.DebugEnabled)
+        {
+            Main.LogMessage($"AlchemyCraftOnly mode: {Main.Settings.AlchemyCraftOnly}");
+            Main.LogMessage($"Can apply Vaal: {canApplyVaalOrb}, Can apply Alchemy: {canApplyAlchemy}, Can apply Exalt: {canApplyExalt}");
+        }
 
         // Handle AlchemyCraftOnly mode first
         if (Main.Settings.AlchemyCraftOnly)
         {
-            // For Normal items, always try to apply Alchemy first
-            if (mods.ItemRarity == ItemRarity.Normal)
+            // For Normal items, try to apply Alchemy if enabled
+            if (mods.ItemRarity == ItemRarity.Normal && canApplyAlchemy)
             {
                 if (Main.Settings.DebugEnabled) Main.LogMessage("AlchemyCraftOnly: Using Alchemy Orb on Normal item");
                 return Main.CurrencyList.FirstOrDefault(c => c.Name == "CurrencyUpgradeToRare"); // Alchemy Orb
@@ -249,20 +259,18 @@ internal static class ItemManager
             // For Rare items
             if (mods.ItemRarity == ItemRarity.Rare)
             {
-                // If we haven't reached the score and have room for more mods, try to exalt
-                if (!scoreReached || modCount < 6)
+                // First check if we can apply Vaal Orb when item has 6 mods
+                if (modCount == 6 && canApplyVaalOrb)
                 {
-                    if (Main.Settings.CurrencyEnabled.TryGetValue("CurrencyAddModToRare", out var exaltEnabled) && exaltEnabled.Value)
-                    {
-                        if (Main.Settings.DebugEnabled) Main.LogMessage("AlchemyCraftOnly: Using Exalted Orb to improve score");
-                        return Main.CurrencyList.FirstOrDefault(c => c.Name == "CurrencyAddModToRare"); // Exalted Orb
-                    }
-                }
-                // If we can apply a Vaal Orb and either always apply is enabled or we've reached the score
-                else if (canApplyVaalOrb)
-                {
-                    if (Main.Settings.DebugEnabled) Main.LogMessage("AlchemyCraftOnly: Applying Vaal Orb");
+                    if (Main.Settings.DebugEnabled) Main.LogMessage("AlchemyCraftOnly: Applying Vaal Orb to 6-mod item");
                     return Main.CurrencyList.FirstOrDefault(c => c.Name == "CurrencyCorrupt"); // Vaal Orb
+                }
+
+                // If we can't Vaal (not 6 mods or Vaal disabled), try to Exalt if enabled
+                if (modCount < 6 && canApplyExalt && (!scoreReached || modCount < 6))
+                {
+                    if (Main.Settings.DebugEnabled) Main.LogMessage("AlchemyCraftOnly: Using Exalted Orb to improve item");
+                    return Main.CurrencyList.FirstOrDefault(c => c.Name == "CurrencyAddModToRare"); // Exalted Orb
                 }
             }
         }
@@ -279,16 +287,17 @@ internal static class ItemManager
             }
             else if (mods.ItemRarity == ItemRarity.Rare)
             {
-                // If we haven't reached the score and have room for more mods
+                // First check if we can apply Vaal Orb when item has 6 mods
+                if (modCount == 6 && canApplyVaalOrb)
+                {
+                    if (Main.Settings.DebugEnabled) Main.LogMessage("Applying Vaal Orb to 6-mod item");
+                    return Main.CurrencyList.FirstOrDefault(c => c.Name == "CurrencyCorrupt"); // Vaal Orb
+                }
+
+                // If we can't Vaal, try to Exalt if score not reached and we have room
                 if (!scoreReached && modCount < 6)
                 {
                     return Main.CurrencyList.FirstOrDefault(c => c.Name == "CurrencyAddModToRare"); // Exalted
-                }
-                // If we can apply a Vaal Orb and either always apply is enabled or we've reached the score
-                else if (canApplyVaalOrb)
-                {
-                    if (Main.Settings.DebugEnabled) Main.LogMessage("Applying Vaal Orb");
-                    return Main.CurrencyList.FirstOrDefault(c => c.Name == "CurrencyCorrupt"); // Vaal Orb
                 }
             }
         }
